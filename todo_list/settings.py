@@ -23,9 +23,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'd)=^c7!0-oqjmqve%(bt+p#sq6x*ipz2keh741j*-@f@_)f!1t'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
 
 
 # Application definition
@@ -120,3 +120,13 @@ LOGIN_URL = 'login'
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
 STATIC_URL = '/static/'
+# Email settings (for Gmail SMTP)
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'your_gmail_address@gmail.com'      # Replace with your Gmail
+EMAIL_HOST_PASSWORD = 'your_app_password_here'        # Use Gmail App Password
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')

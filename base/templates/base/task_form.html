@@ -1,18 +1,115 @@
 {% extends 'base/main.html' %}
 {% block content %}
 
-<div class="header-bar">
-    <a href="{% url 'tasks' %}">&#8592; Back</a>
-</div>
+<div class="form-container">
+    <a href="{% url 'tasks' %}" class="back-link">&larr; Back</a>
+    <h2 class="form-title">{{ title }}</h2>
 
-
-<div class="card-body">
-    <form method="POST" action="">
+    <form method="POST" autocomplete="off">
         {% csrf_token %}
-        {{form.as_p}}
-        <input class="button" type="submit" value="Submit">
+        
+        <label for="id_title">Title:</label>
+        {{ form.title }}
+
+        <label for="id_complete">Complete:</label>
+        {{ form.complete }}
+
+        <label for="id_due_date">Due Date:</label>
+        {{ form.due_date }}
+
+        <label for="id_priority">Priority:</label>
+        {{ form.priority }}
+
+        <label for="id_category">Category:</label>
+        {{ form.category }}
+
+        <button type="submit" class="submit-btn">Save Task</button>
     </form>
 </div>
 
+<style>
+/* Container */
+.form-container {
+    max-width: 600px;
+    margin: 40px auto;
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* Title */
+.form-title {
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 26px;
+    color: #333;
+}
+
+/* Labels */
+form label {
+    display: block;
+    margin: 15px 0 5px;
+    color: #444;
+    font-weight: 500;
+}
+
+/* Inputs */
+form input[type="text"],
+form input[type="datetime-local"],
+form select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+    transition: 0.2s;
+}
+
+form input:focus,
+form select:focus {
+    border-color: #f07b72;
+    box-shadow: 0 0 3px #f07b72;
+}
+
+/* Checkbox */
+form input[type="checkbox"] {
+    transform: scale(1.2);
+    margin-top: 5px;
+}
+
+/* Button */
+.submit-btn {
+    background: #f07b72;
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    margin-top: 25px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    width: 100%;
+}
+
+.submit-btn:hover {
+    background: #e25e58;
+}
+
+/* Back link */
+.back-link {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: #f07b72;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+</style>
 
 {% endblock content %}

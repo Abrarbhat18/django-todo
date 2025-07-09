@@ -1,84 +1,202 @@
-{% extends 'base/main.html' %} {% block content %}
+{% extends 'base/main.html' %}
+{% load static %}
+{% block content %}
 
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-<div class="header-bar">
-    <div>
-        <h1>Hello {{request.user|title}}</h1>
-        <h3 style="margin:0">You have <i>{{count}}</i> incomplete task{{ count|pluralize:"s" }}</h3>
-    </div>
-
-    {% if request.user.is_authenticated %}
-    <a href="{% url 'logout' %}">Logout</a> {% else %}
-    <a href="{% url 'login' %}">Login</a> {% endif %}
-</div>
-
-
-<div id="search-add-wrapper">
-    <form method="GET" style="display: flex;">
-        <input type='text' name='search-area' placeholder="Search your task" value="{{search_input}}">
-        <input class="button" type="submit" value='Search'>
-    </form>
-    {% if tasks|length > 0 %}
-    <a id="add-link" href="{% url 'task-create' %}">&#x2b;</a>
-    {% endif %}
-</div>
-
-
-<!-- Hidden form. Form submits new item positions -->
-<form style="display: none;" id="reorderForm" method="post" action="{% url 'task-reorder' %}">
-    {% csrf_token %}
-    <input type="hidden" id="positionInput" name="position">
-</form>
-
-
-<div id="tasklist" class="task-items-wrapper">
-    {% for task in tasks %}
-    <div class="task-wrapper" data-position="{{task.pk}}">
-        <div class="task-title">
-            {% if task.complete %}
-            <div class="task-complete-icon"></div>
-            <i><s><a href="{% url 'task-update' task.id %}">{{task}}</a></s></i> {% else %}
-            <div class="task-incomplete-icon"></div>
-            <a href="{% url 'task-update' task.id %}">{{task}}</a> {% endif %}
-        </div>
-        <div class="task-controls">
-            <a class="delete-link" href="{% url 'task-delete' task.id %}">&#215;</a>
-            <span class="handle">&nbsp;&#10247;</span>
-        </div>
-    </div>
-
-    {% empty %}
-    <div style="text-align: center; padding-bottom: 10px; line-height: 1em;">
-        <h3>No new tasks are created.</h3>
-        <h3>Create a <a style="text-decoration: none; color: #e53935;" href="{% url 'task-create' %}">New task</a> ! </h3>
-    </div>
-    {% endfor %}
-</div>
-
-<script>
-    var taskList = document.getElementById("tasklist");
-    var reorderForm = document.getElementById("reorderForm");
-    var positionInput = document.getElementById("positionInput");
-
-    let sortable = Sortable.create(taskList, {
-        handle: '.handle',
-        ghostClass: 'dropArea',
-        chosenClass: 'selectedTask',
-
-    });
-
-    function reordering() {
-        const rows = document.getElementsByClassName("task-wrapper");
-        let pos = [];
-        for (let row of rows) {
-            pos.push(row.dataset.position);
-        }
-        console.log(pos.join(","))
-        positionInput.value = pos.join(',');
-        reorderForm.submit();
+<style>
+    .task-wrapper {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 10px;
+        border-bottom: 1px solid #ddd;
+        background: #fff;
+        margin-bottom: 5px;
+        transition: background 0.2s;
     }
 
-    document.ondrop = reordering
+    .task-wrapper:hover {
+        background: #f9f9f9;
+    }
+
+    .task-title {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .delete-link {
+        text-decoration: none;
+        color: #cf4949;
+        font-weight: bold;
+        font-size: 20px;
+    }
+
+    .button {
+        background: #EB796F;
+        color: #fff;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    input[type="text"], select {
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+    }
+
+    #toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #333;
+        color: #fff;
+        padding: 12px 20px;
+        border-radius: 5px;
+        display: none;
+        z-index: 9999;
+    }
+</style>
+
+<div class="card-body">
+    <h2 style="margin-bottom: 20px;">Hi {{ request.user.username|capfirst }} 👋</h2>
+
+    <!-- Search Bar -->
+    <form method="GET" style="margin-bottom: 20px;">
+        <input type="text" name="search-area" placeholder="Search tasks..." value="{{ search_input }}">
+        <button class="button" type="submit">Search</button>
+    </form>
+
+    <!-- Filters -->
+    <form method="GET" style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <select name="category">
+            <option value="">All Categories</option>
+            <option value="work" {% if category_filter == "work" %}selected{% endif %}>Work</option>
+            <option value="personal" {% if category_filter == "personal" %}selected{% endif %}>Personal</option>
+            <option value="urgent" {% if category_filter == "urgent" %}selected{% endif %}>Urgent</option>
+        </select>
+        <select name="priority">
+            <option value="">All Priorities</option>
+            <option value="high" {% if priority_filter == "high" %}selected{% endif %}>High</option>
+            <option value="medium" {% if priority_filter == "medium" %}selected{% endif %}>Medium</option>
+            <option value="low" {% if priority_filter == "low" %}selected{% endif %}>Low</option>
+        </select>
+        <button class="button" type="submit">Apply</button>
+    </form>
+
+    <!-- Progress Bar -->
+    <div style="margin-bottom: 20px;">
+        <strong>Progress:</strong> {{ completed_tasks }}/{{ total_tasks }} tasks complete
+        <div style="background-color: #e0e0e0; border-radius: 5px; overflow: hidden; height: 10px;">
+            <div style="width: {{ percent_complete }}%; background-color: #6bc56b; height: 10px;"></div>
+        </div>
+    </div>
+
+    <!-- Add Task Button -->
+    <div style="text-align: right; margin-bottom: 20px;">
+        <a href="{% url 'task-create' %}" class="button">+ Add Task</a>
+    </div>
+
+    <!-- Incomplete Tasks -->
+    <h3>🔴 Incomplete Tasks</h3>
+    <div id="incomplete-tasks">
+        {% for task in tasks %}
+            {% if not task.complete %}
+                <div class="task-wrapper" id="task-{{ task.id }}">
+                    <div class="task-title">
+                        <input type="checkbox" class="complete-checkbox" data-id="{{ task.id }}">
+                        <a href="{% url 'task' task.id %}">{{ task.title }}</a>
+                        {% if task.due_date %}
+                            <small style="color: gray;"> — {{ task.due_date|date:"d M, Y" }}</small>
+                        {% endif %}
+                    </div>
+                    <a class="delete-link" href="{% url 'task-delete' task.id %}">✖</a>
+                </div>
+            {% endif %}
+        {% empty %}
+            <p>No incomplete tasks.</p>
+        {% endfor %}
+    </div>
+
+    <!-- Completed Tasks -->
+    <h3 style="margin-top: 30px;">✅ Completed Tasks</h3>
+    <div id="completed-tasks">
+        {% for task in tasks %}
+            {% if task.complete %}
+                <div class="task-wrapper" id="task-{{ task.id }}">
+                    <div class="task-title">
+                        <input type="checkbox" class="complete-checkbox" data-id="{{ task.id }}" checked>
+                        <a href="{% url 'task' task.id %}" style="text-decoration: line-through;">{{ task.title }}</a>
+                        {% if task.due_date %}
+                            <small style="color: gray;"> — {{ task.due_date|date:"d M, Y" }}</small>
+                        {% endif %}
+                    </div>
+                    <a class="delete-link" href="{% url 'task-delete' task.id %}">✖</a>
+                </div>
+            {% endif %}
+        {% empty %}
+            <p>No completed tasks yet.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- AJAX Toggle Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const checkboxes = document.querySelectorAll('.complete-checkbox');
+
+    checkboxes.forEach(box => {
+        box.addEventListener('change', function () {
+            const taskId = this.dataset.id;
+            const csrfToken = '{{ csrf_token }}';
+
+            fetch("{% url 'toggle-complete' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `task_id=${taskId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const taskWrapper = document.getElementById(`task-${taskId}`);
+                    const taskAnchor = taskWrapper.querySelector('a');
+
+                    if (data.complete) {
+                        document.getElementById('completed-tasks').appendChild(taskWrapper);
+                        taskAnchor.style.textDecoration = 'line-through';
+                        showToast("✅ Marked as Complete");
+                    } else {
+                        document.getElementById('incomplete-tasks').appendChild(taskWrapper);
+                        taskAnchor.style.textDecoration = 'none';
+                        showToast("⏳ Marked as Incomplete");
+                    }
+
+                    playSound();
+                }
+            });
+        });
+    });
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.innerText = msg;
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 2000);
+    }
+
+    function playSound() {
+        const audio = new Audio("https://www.myinstants.com/media/sounds/pop-up-kitten.mp3");
+        audio.play();
+    }
+});
 </script>
 
-{% endblock content %}
+{% endblock %}
