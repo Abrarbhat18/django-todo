@@ -130,3 +130,8 @@ EMAIL_HOST_PASSWORD = 'your_app_password_here'        # Use Gmail App Password
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+
